@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  resumes      Resume[]
+  jds          JobDescription[]
+  interviews   Interview[]
+
+  @@index([email])
+}
+
+model Resume {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl    String
+  rawText    String
+  parsedJson String      // JSON string: name, skills, languages, frameworks, tools, education, experience, projects, certifications, experienceLevel
+  uploadedAt DateTime    @default(now())
+  interviews Interview[]
+
+  @@index([userId])
+}
+
+model JobDescription {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawText    String
+  parsedJson String      // JSON string: requiredSkills, preferredSkills, responsibilities, tech, keywords
+  createdAt  DateTime    @default(now())
+  interviews Interview[]
+
+  @@index([userId])
+}
+
+model Interview {
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId         String?
+  resume           Resume?             @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  jdId             String?
+  jd               JobDescription?     @relation(fields: [jdId], references: [id], onDelete: SetNull)
+  role             String
+  experienceLevel  String              // entry, mid, senior, lead
+  difficulty       String              // easy, medium, hard, faang
+  interviewType    String              // technical, behavioral, system-design, mixed
+  status           String              // setup, in_progress, completed, abandoned
+  overallScore     Float?
+  readinessPercent Float?
+  summaryJson      String?             // Aggregated final report JSON
+  createdAt        DateTime            @default(now())
+  completedAt      DateTime?
+  questions        InterviewQuestion[]
+
+  @@index([userId])
+}
+
+model InterviewQuestion {
+  id           String            @id @default(uuid())
+  interviewId  String
+  interview    Interview         @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  questionText String
+  questionType String            // technical, behavioral, situational, follow_up
+  orderIndex   Int
+  createdAt    DateTime          @default(now())
+  answers      Answer[]
+
+  @@index([interviewId])
+}
+
+model Answer {
+  id          String            @id @default(uuid())
+  questionId  String
+  question    InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerText  String
+  createdAt   DateTime          @default(now())
+  evaluation  AnswerEvaluation?
+
+  @@index([questionId])
+}
+
+model AnswerEvaluation {
+  id                 String   @id @default(uuid())
+  answerId           String   @unique
+  answer             Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  technicalScore     Float
+  relevanceScore     Float
+  clarityScore       Float
+  completenessScore  Float
+  communicationScore Float
+  overallScore       Float
+  feedbackJson       String   // Strengths, areas of improvement, ideal answer breakdown
+  createdAt          DateTime @default(now())
+}
