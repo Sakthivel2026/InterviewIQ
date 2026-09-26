@@ -92,7 +92,7 @@ export const getUserJds = async (req: AuthenticatedRequest, res: Response): Prom
       orderBy: { createdAt: 'desc' },
     });
 
-    const formatted = jds.map((j) => ({
+    const formatted = jds.map((j: any) => ({
       id: j.id,
       createdAt: j.createdAt,
       parsed: JSON.parse(j.parsedJson),

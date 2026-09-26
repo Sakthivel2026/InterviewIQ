@@ -14,13 +14,15 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+    // Sanitize extension and base filename to prevent path traversal
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${cleanBase}-${uniqueSuffix}${ext}`);
   },
 });
 
 const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = [
+  const allowedMimeTypes = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/msword',
@@ -30,7 +32,10 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterC
   const ext = path.extname(file.originalname).toLowerCase();
   const allowedExts = ['.pdf', '.docx', '.doc', '.txt'];
 
-  if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+  const isMimeAllowed = allowedMimeTypes.includes(file.mimetype);
+  const isExtAllowed = allowedExts.includes(ext);
+
+  if (isMimeAllowed && isExtAllowed) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file format. Only PDF, DOCX, and TXT files (max 5MB) are supported.'));

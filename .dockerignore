@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.git
+.github
+.vscode
+client/dist
+server/dist
+uploads
+coverage

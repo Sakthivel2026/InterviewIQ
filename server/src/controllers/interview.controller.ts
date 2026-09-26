@@ -13,6 +13,25 @@ const createInterviewSchema = z.object({
   jdId: z.string().optional(),
 });
 
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const stopWords = new Set(['the', 'is', 'at', 'which', 'on', 'you', 'your', 'how', 'what', 'would', 'can', 'with', 'from', 'for', 'in', 'of', 'and', 'or', 'a', 'an', 'to', 'this', 'that', 'role', 'worked']);
+  const tokenize = (s: string) =>
+    new Set(
+      s.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !stopWords.has(w))
+    );
+  const t1 = tokenize(str1);
+  const t2 = tokenize(str2);
+  if (t1.size === 0 || t2.size === 0) return 0;
+  let intersection = 0;
+  t1.forEach((val) => {
+    if (t2.has(val)) intersection++;
+  });
+  return intersection / (t1.size + t2.size - intersection);
+};
+
 export const createInterview = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
@@ -57,17 +76,58 @@ export const createInterview = async (req: AuthenticatedRequest, res: Response):
       }
     }
 
-    // Call Claude AI to generate 8-10 personalized questions
-    const generatedQuestions = await generateQuestionsWithClaude({
+    // Fetch prior questions for candidate/JD combination to prevent repetitive questions
+    const priorQuestionRecords = await prisma.interviewQuestion.findMany({
+      where: {
+        interview: {
+          userId,
+          ...(jdId ? { jdId } : {}),
+        },
+      },
+      select: { questionText: true },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+    });
+    const previousQuestionTexts = priorQuestionRecords.map((q) => q.questionText);
+
+    // Call Claude AI (or fallback) to generate fresh personalized questions avoiding history
+    const rawQuestions = await generateQuestionsWithClaude({
       role,
       experienceLevel,
       difficulty,
       interviewType,
       resumeParsed,
       jdParsed,
+      previousQuestions: previousQuestionTexts,
     });
 
-    // Create Interview record in DB
+    // Deduplicate generated questions against history and within batch
+    const dedupedQuestions: typeof rawQuestions = [];
+    for (const q of rawQuestions) {
+      const isDuplicateOfHistory = previousQuestionTexts.some(
+        (prevText) => calculateSimilarity(q.questionText, prevText) > 0.45
+      );
+      const isDuplicateOfBatch = dedupedQuestions.some(
+        (accepted) => calculateSimilarity(q.questionText, accepted.questionText) > 0.45
+      );
+
+      if (!isDuplicateOfHistory && !isDuplicateOfBatch) {
+        dedupedQuestions.push(q);
+      }
+    }
+
+    // Ensure we have at least 8 questions by appending non-batch-duplicate candidates
+    let finalQuestions = dedupedQuestions;
+    if (finalQuestions.length < 8) {
+      for (const q of rawQuestions) {
+        if (!finalQuestions.includes(q)) {
+          finalQuestions.push(q);
+        }
+        if (finalQuestions.length >= 8) break;
+      }
+    }
+
+    // Create unique Interview record in DB (fresh session ID per interview)
     const interview = await prisma.interview.create({
       data: {
         userId,
@@ -79,7 +139,7 @@ export const createInterview = async (req: AuthenticatedRequest, res: Response):
         interviewType,
         status: 'setup',
         questions: {
-          create: generatedQuestions.map((q, idx) => ({
+          create: finalQuestions.map((q, idx) => ({
             questionText: q.questionText,
             questionType: q.questionType || 'technical',
             orderIndex: idx + 1,

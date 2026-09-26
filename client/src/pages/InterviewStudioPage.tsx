@@ -83,6 +83,39 @@ export const InterviewStudioPage: React.FC = () => {
 
   const currentQuestion = questions[currentIndex];
 
+  // Synchronize transcript and evaluation when question changes
+  useEffect(() => {
+    if (currentQuestion) {
+      const ans = currentQuestion.answers?.find((a: any) => a.answerText && a.answerText.trim().length > 0) || currentQuestion.answers?.[0];
+      if (ans && ans.answerText) {
+        setTranscript(ans.answerText);
+        if (ans.evaluation) {
+          const evalObj = ans.evaluation;
+          const feedback = typeof evalObj.feedbackJson === 'string' ? JSON.parse(evalObj.feedbackJson) : evalObj.feedback;
+          setEvaluation({
+            technicalScore: evalObj.technicalScore,
+            relevanceScore: evalObj.relevanceScore,
+            clarityScore: evalObj.clarityScore,
+            completenessScore: evalObj.completenessScore,
+            communicationScore: evalObj.communicationScore,
+            overallScore: evalObj.overallScore,
+            feedback: feedback || {
+              summary: 'Evaluated response.',
+              strengths: [],
+              areasForImprovement: [],
+              idealAnswerDraft: '',
+            },
+          });
+        } else {
+          setEvaluation(null);
+        }
+      } else {
+        setTranscript('');
+        setEvaluation(null);
+      }
+    }
+  }, [currentIndex, currentQuestion?.id]);
+
   // Text-To-Speech (TTS) handler
   const handleToggleTTS = () => {
     if (isSpeakingTTS) {
@@ -149,6 +182,27 @@ export const InterviewStudioPage: React.FC = () => {
       }
 
       setEvaluation(data.evaluation);
+
+      // Update question in local state with new answer and evaluation
+      setQuestions((prev) => {
+        const copy = [...prev];
+        if (copy[currentIndex]) {
+          copy[currentIndex] = {
+            ...copy[currentIndex],
+            answers: [
+              {
+                id: data.evaluation.answerId,
+                answerText: transcript,
+                evaluation: {
+                  ...data.evaluation,
+                  feedbackJson: JSON.stringify(data.evaluation.feedback),
+                },
+              },
+            ],
+          };
+        }
+        return copy;
+      });
 
       // If an adaptive follow-up was created by Claude, append to question sequence!
       if (data.followUpQuestion) {

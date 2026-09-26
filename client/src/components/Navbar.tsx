@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bot, Sparkles, User, LogOut, LayoutDashboard, Mic, ChevronRight, FileText } from 'lucide-react';
+import { Bot, LogOut, LayoutDashboard, Mic, ChevronRight, FileText } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -41,9 +41,6 @@ export const Navbar: React.FC = () => {
           <div className="flex flex-col">
             <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5 font-['Outfit']">
               Interview<span className="gradient-text">IQ</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold tracking-wide">
-                PRO 2026
-              </span>
             </span>
           </div>
         </Link>

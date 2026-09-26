@@ -4,11 +4,16 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import apiRouter from './routes';
+import { apiLimiter } from './middlewares/rateLimiter.middleware';
 
 const app: Express = express();
 
-// Security Middleware
-app.use(helmet());
+// Security Middleware (Helmet with cross-origin configuration)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS configuration
 app.use(
@@ -20,10 +25,16 @@ app.use(
   })
 );
 
+// General Rate Limiter
+app.use('/api/', apiLimiter);
+
 // Body parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cookieParser());
+
+// Static file serving for uploads with secure headers
+app.use('/uploads', express.static('uploads'));
 
 // Mount API v1 router
 app.use('/api/v1', apiRouter);

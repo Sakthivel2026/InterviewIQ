@@ -29,21 +29,21 @@ export const DashboardPage: React.FC = () => {
 
   const scoredInterviews = interviews.filter((i) => i.overallScore !== null && i.overallScore !== undefined);
   const avgScore = scoredInterviews.length
-    ? Math.round(scoredInterviews.reduce((sum, i) => sum + i.overallScore, 0) / scoredInterviews.length)
-    : 85;
+    ? Math.round(scoredInterviews.reduce((sum, i) => sum + (i.overallScore || 0), 0) / scoredInterviews.length)
+    : 0;
 
   const readinessInterviews = interviews.filter((i) => i.readinessPercent !== null && i.readinessPercent !== undefined);
   const avgReadiness = readinessInterviews.length
-    ? Math.round(readinessInterviews.reduce((sum, i) => sum + i.readinessPercent, 0) / readinessInterviews.length)
-    : 86;
+    ? Math.round(readinessInterviews.reduce((sum, i) => sum + (i.readinessPercent || 0), 0) / readinessInterviews.length)
+    : 0;
 
   // Chart data for score progression over time
   const chartData = [...interviews]
     .reverse()
     .map((i, idx) => ({
       name: `Session ${idx + 1}`,
-      score: i.overallScore ?? 80,
-      readiness: i.readinessPercent ?? 82,
+      score: i.overallScore ?? 0,
+      readiness: i.readinessPercent ?? 0,
       role: i.role,
     }));
 

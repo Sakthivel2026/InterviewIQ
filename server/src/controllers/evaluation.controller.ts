@@ -46,13 +46,25 @@ export const evaluateAnswer = async (req: AuthenticatedRequest, res: Response): 
       experienceLevel: question.interview.experienceLevel,
     });
 
-    // Save Answer record
-    const answerRecord = await prisma.answer.create({
-      data: {
-        questionId: question.id,
-        answerText,
-      },
+    // Check for existing Answer record for this question to update/upsert
+    let answerRecord = await prisma.answer.findFirst({
+      where: { questionId: question.id },
     });
+
+    if (answerRecord) {
+      await prisma.answerEvaluation.deleteMany({ where: { answerId: answerRecord.id } });
+      answerRecord = await prisma.answer.update({
+        where: { id: answerRecord.id },
+        data: { answerText },
+      });
+    } else {
+      answerRecord = await prisma.answer.create({
+        data: {
+          questionId: question.id,
+          answerText,
+        },
+      });
+    }
 
     // Save AnswerEvaluation record
     const evaluationRecord = await prisma.answerEvaluation.create({
@@ -67,6 +79,14 @@ export const evaluateAnswer = async (req: AuthenticatedRequest, res: Response): 
         feedbackJson: JSON.stringify(evalResult.feedback),
       },
     });
+
+    // Ensure interview status is set to in_progress
+    if (question.interview.status === 'setup') {
+      await prisma.interview.update({
+        where: { id: question.interviewId },
+        data: { status: 'in_progress' },
+      });
+    }
 
     let createdFollowUpQuestion: any = null;
 

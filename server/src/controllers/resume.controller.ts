@@ -1,8 +1,11 @@
 import { Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { extractTextFromFile } from '../utils/fileExtractor';
 import { parseResumeWithClaude } from '../ai/claude.service';
 import { prisma } from '../utils/prisma';
+import { env } from '../config/env';
 
 export const uploadResume = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -73,7 +76,7 @@ export const getUserResumes = async (req: AuthenticatedRequest, res: Response): 
       orderBy: { uploadedAt: 'desc' },
     });
 
-    const formattedResumes = resumes.map((r) => ({
+    const formattedResumes = resumes.map((r: any) => ({
       id: r.id,
       fileUrl: r.fileUrl,
       uploadedAt: r.uploadedAt,
@@ -89,10 +92,10 @@ export const getUserResumes = async (req: AuthenticatedRequest, res: Response): 
 export const getResumeById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const interviewId = req.params.id as string;
+    const resumeId = req.params.id as string;
 
     const resume = await prisma.resume.findFirst({
-      where: { id: interviewId, userId },
+      where: { id: resumeId, userId },
     });
 
     if (!resume) {
@@ -110,5 +113,54 @@ export const getResumeById = async (req: AuthenticatedRequest, res: Response): P
     });
   } catch (error) {
     res.status(500).json({ error: 'Internal Error' });
+  }
+};
+
+export const deleteResume = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const resumeId = req.params.id as string;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User authentication required.' });
+      return;
+    }
+
+    // Verify ownership and existence
+    const existingResume = await prisma.resume.findFirst({
+      where: { id: resumeId, userId },
+    });
+
+    if (!existingResume) {
+      res.status(404).json({ error: 'Not Found', message: 'Resume record not found or access denied.' });
+      return;
+    }
+
+    // Attempt to delete physical file from disk if uploaded
+    if (existingResume.fileUrl && existingResume.fileUrl.startsWith('/uploads/')) {
+      const filename = path.basename(existingResume.fileUrl);
+      const uploadDir = path.resolve(process.cwd(), env.UPLOAD_DIR);
+      const filePath = path.join(uploadDir, filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (fsErr) {
+          console.warn('Failed to delete physical resume file:', fsErr);
+        }
+      }
+    }
+
+    // Delete record from database (Prisma onDelete: SetNull on Interview.resumeId handles linked interviews)
+    await prisma.resume.delete({
+      where: { id: resumeId },
+    });
+
+    res.status(200).json({
+      message: 'Resume deleted successfully.',
+      id: resumeId,
+    });
+  } catch (error) {
+    console.error('Delete resume error:', error);
+    res.status(500).json({ error: 'Internal Error', message: 'Failed to delete resume record.' });
   }
 };

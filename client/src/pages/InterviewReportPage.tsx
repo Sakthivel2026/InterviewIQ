@@ -98,16 +98,31 @@ export const InterviewReportPage: React.FC = () => {
     );
   }
 
+  // Answered vs Total Questions tracking
+  const totalQuestions = report?.totalQuestions ?? interview.questions?.length ?? 0;
+  const answeredCount = report?.answeredCount ?? (interview.questions?.filter((q: any) => q.answers?.[0]?.answerText?.trim()?.length > 0).length ?? 0);
+  const readinessPercent = report?.readinessPercent ?? interview.readinessPercent ?? 0;
+  const overallScore = report?.overallScore ?? interview.overallScore ?? 0;
+
+  const isZeroAnswered = answeredCount === 0;
+  const isFullyAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
+
   // Dimension Radar / Bar chart formatting
   const radarData = report?.radarScores
     ? [
-        { subject: 'Technical', score: report.radarScores.technical },
-        { subject: 'Relevance', score: report.radarScores.relevance },
-        { subject: 'Clarity', score: report.radarScores.clarity },
-        { subject: 'Completeness', score: report.radarScores.completeness },
-        { subject: 'Communication', score: report.radarScores.communication },
+        { subject: 'Technical', score: report.radarScores.technical ?? 0 },
+        { subject: 'Relevance', score: report.radarScores.relevance ?? 0 },
+        { subject: 'Clarity', score: report.radarScores.clarity ?? 0 },
+        { subject: 'Completeness', score: report.radarScores.completeness ?? 0 },
+        { subject: 'Communication', score: report.radarScores.communication ?? 0 },
       ]
-    : [];
+    : [
+        { subject: 'Technical', score: 0 },
+        { subject: 'Relevance', score: 0 },
+        { subject: 'Clarity', score: 0 },
+        { subject: 'Completeness', score: 0 },
+        { subject: 'Communication', score: 0 },
+      ];
 
   const barColors = ['#6366f1', '#06b6d4', '#a855f7', '#10b981', '#f59e0b'];
 
@@ -141,19 +156,51 @@ export const InterviewReportPage: React.FC = () => {
       {/* Hero Overview Banner: Readiness Score + Executive Summary */}
       <div className="glass-card rounded-2xl p-6 sm:p-8 border border-indigo-500/30 shadow-2xl relative overflow-hidden grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
         {/* Readiness Score Dial */}
-        <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-indigo-950/40 border border-indigo-800/40 text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-500 to-emerald-400 p-[3px] shadow-xl shadow-indigo-500/30 mb-3">
+        <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-indigo-950/40 border border-indigo-800/40 text-center space-y-2">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-500 to-emerald-400 p-[3px] shadow-xl shadow-indigo-500/30">
             <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center">
               <span className="text-3xl font-extrabold text-white font-['Outfit']">
-                {report?.readinessPercent ?? interview.readinessPercent ?? 85}%
+                {readinessPercent}%
               </span>
               <span className="text-[9px] text-indigo-300 font-mono uppercase font-semibold">Readiness</span>
             </div>
           </div>
-          <span className="text-sm font-bold text-emerald-400 font-['Outfit']">
-            {(report?.readinessPercent ?? 85) >= 80 ? 'Role Ready' : 'Needs Practice'}
-          </span>
-          <span className="text-[11px] text-slate-400 mt-0.5">Overall Score: {report?.overallScore ?? interview.overallScore ?? 85}/100</span>
+          <div>
+            <span
+              className={`text-xs font-bold uppercase tracking-wider font-['Outfit'] block ${
+                isZeroAnswered
+                  ? 'text-rose-400'
+                  : !isFullyAnswered
+                  ? 'text-amber-400'
+                  : readinessPercent >= 80
+                  ? 'text-emerald-400'
+                  : 'text-indigo-400'
+              }`}
+            >
+              {isZeroAnswered
+                ? 'Session Unattempted'
+                : !isFullyAnswered
+                ? `Partial (${answeredCount}/${totalQuestions} Answered)`
+                : readinessPercent >= 80
+                ? 'Role Ready'
+                : 'Needs Practice'}
+            </span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">Overall Score: {overallScore}/100</span>
+          </div>
+
+          <div className="pt-1">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold border ${
+                isZeroAnswered
+                  ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                  : !isFullyAnswered
+                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+              }`}
+            >
+              {answeredCount} of {totalQuestions} Questions Answered
+            </span>
+          </div>
         </div>
 
         {/* Executive Summary */}
@@ -163,7 +210,10 @@ export const InterviewReportPage: React.FC = () => {
             <h2 className="text-lg font-bold text-white font-['Outfit']">Executive AI Summary</h2>
           </div>
           <p className="text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
-            {report?.executiveSummary || 'The candidate demonstrated thorough domain knowledge and clear structured reasoning across technical and system architecture scenarios.'}
+            {report?.executiveSummary ||
+              (isZeroAnswered
+                ? 'The candidate did not submit answers for any assigned questions in this mock interview session.'
+                : 'Evaluation report generated based on submitted candidate responses.')}
           </p>
         </div>
       </div>
@@ -279,6 +329,7 @@ export const InterviewReportPage: React.FC = () => {
         <div className="space-y-3">
           {interview.questions?.map((q: any, idx: number) => {
             const ans = q.answers?.[0];
+            const hasAnswer = ans?.answerText && ans.answerText.trim().length > 0;
             const evalData = ans?.evaluation;
             const feedbackObj = evalData?.feedbackJson ? JSON.parse(evalData.feedbackJson) : null;
             const isExpanded = expandedQuestion === q.id;
@@ -299,9 +350,13 @@ export const InterviewReportPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-                    {evalData && (
+                    {hasAnswer && evalData ? (
                       <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
                         {evalData.overallScore}/100
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30">
+                        0/100 (Unanswered)
                       </span>
                     )}
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -319,13 +374,15 @@ export const InterviewReportPage: React.FC = () => {
                     {/* Candidate Transcript */}
                     <div>
                       <span className="text-[10px] text-indigo-400 uppercase font-mono block mb-1">Candidate Answer Transcript</span>
-                      <p className="text-slate-300 bg-slate-950 p-3 rounded-lg border border-slate-800 italic">
-                        "{ans?.answerText || 'No answer recorded.'}"
+                      <p className={`p-3 rounded-lg border text-xs italic ${
+                        hasAnswer ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-rose-300 bg-rose-950/20 border-rose-900/40'
+                      }`}>
+                        {hasAnswer ? `"${ans.answerText}"` : '[Unanswered - 0/100 points]'}
                       </p>
                     </div>
 
                     {/* Claude Rubric Feedback */}
-                    {feedbackObj && (
+                    {feedbackObj ? (
                       <div className="space-y-2">
                         <span className="text-[10px] text-cyan-400 uppercase font-mono block">Claude Evaluation Feedback</span>
                         <p className="text-slate-300 leading-relaxed">{feedbackObj.summary}</p>
@@ -337,7 +394,11 @@ export const InterviewReportPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    )}
+                    ) : !hasAnswer ? (
+                      <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-800/40 text-rose-300 text-xs">
+                        This question was not answered during the session and contributed 0 points to all performance dimensions.
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>

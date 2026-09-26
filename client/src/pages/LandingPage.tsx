@@ -1,43 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Sparkles,
   Bot,
   Mic,
   FileText,
-  Target,
   BarChart3,
   CheckCircle2,
   ArrowRight,
-  ShieldCheck,
-  Zap,
-  Activity,
-  Award,
   ChevronRight,
-  Cpu,
 } from 'lucide-react';
 
-interface HealthData {
-  status: string;
-  system: string;
-  version: string;
-  timestamp: string;
-  environment: string;
-}
-
 export const LandingPage: React.FC = () => {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => {
-        if (!res.ok) throw new Error('Health check failed');
-        return res.json();
-      })
-      .then((data) => setHealth(data))
-      .catch((err) => setHealthError(err.message));
-  }, []);
 
   return (
     <div className="relative overflow-hidden pt-28 pb-20">
@@ -48,26 +21,6 @@ export const LandingPage: React.FC = () => {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <div className="text-center max-w-4xl mx-auto">
-          {/* System API Live Status Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs mb-8 shadow-xl backdrop-blur-md">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-slate-300 font-medium">Express API v1:</span>
-            {health ? (
-              <span className="text-emerald-400 font-mono font-semibold">{health.status.toUpperCase()} ({health.environment})</span>
-            ) : healthError ? (
-              <span className="text-amber-400 font-mono">CONNECTING...</span>
-            ) : (
-              <span className="text-slate-400 font-mono">PINGING SERVER...</span>
-            )}
-            <span className="text-slate-600">|</span>
-            <span className="text-indigo-400 font-semibold flex items-center gap-1">
-              <Cpu className="w-3.5 h-3.5" /> Anthropic Claude Sonnet 4.6
-            </span>
-          </div>
-
           {/* Main Headline */}
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-[1.15] font-['Outfit']">
             Ace Your Next Interview with <br />

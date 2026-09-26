@@ -89,3 +89,9 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
   return response;
 };
+
+export const deleteResume = async (id: string) => {
+  return apiFetch(`/resumes/${id}`, {
+    method: 'DELETE',
+  });
+};

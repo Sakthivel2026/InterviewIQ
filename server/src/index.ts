@@ -1,13 +1,15 @@
 import app from './app';
 import { env } from './config/env';
 
-const server = app.listen(env.PORT, () => {
+const PORT = Number(env.PORT) || 5000;
+
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ┌─────────────────────────────────────────────────────────┐
 │              InterviewIQ Express Server                 │
 ├─────────────────────────────────────────────────────────┤
 │  Status:      ONLINE                                    │
-│  Port:        ${env.PORT}                                      │
+│  Port:        ${PORT}                                      │
 │  Environment: ${env.NODE_ENV.padEnd(41)} │
 │  API Prefix:  /api/v1                                   │
 └─────────────────────────────────────────────────────────┘
